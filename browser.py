@@ -8,22 +8,13 @@ def parse(url):
     path = "/" + path #adding "/" back to path
     return host, path
 
-
-
-
-def main():
-    url = "http://example.org/index.html"
+def request(url):
     host, path = parse(url)
-    print ("host: ", host)
-    print ("path: ", path)
-
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
-
     s.connect((host, 80))
 
-    request = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
-    sentBytes = s.send(request)
-    print(sentBytes) 
+    requestUtf8 = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
+    s.send(requestUtf8)
 
     response =  s.makefile("r", encoding="utf8", newline="\r\n")
     statusline = response.readline()
@@ -49,6 +40,11 @@ def main():
     body = response.read()
     s.close()
 
+    return headers, body
+
+def main():
+    url = "http://example.org/index.html"
+    headers, body = request(url)
     print(body)
 
 if __name__ == '__main__':
