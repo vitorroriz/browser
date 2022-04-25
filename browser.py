@@ -12,12 +12,6 @@ def parse(url):
         path = ""
 
     path = "/" + path #adding "/" back to path
-    return scheme, host, path
-
-def request(url):
-    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
-
-    scheme, host, path = parse(url)
 
     #handle custom ports
     if ":" in host:
@@ -25,6 +19,13 @@ def request(url):
         port = int(port)
     else:
         port = 80 if scheme == "http" else 443
+
+    return scheme, host, path, port
+
+def request(url):
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+
+    scheme, host, path, port = parse(url)
 
     #if it is https, let's wrap the socket with ssl library
     if scheme == "https":
