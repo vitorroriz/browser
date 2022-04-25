@@ -1,20 +1,27 @@
 import socket
 import sys
+import ssl
 
 def parse(url):
-    protocol = "http://"
-    assert url.startswith(protocol)
-    url = url[len(protocol):]
+    scheme, url = url.split("://", 1)
+    assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
     host, path = url.split("/", 1) #1 here is the number of occurrences to use for split
     path = "/" + path #adding "/" back to path
-    return host, path
+    return scheme, host, path
 
 def request(url):
-    import socket
-
-    host, path = parse(url)
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
-    s.connect((host, 80))
+
+    scheme, host, path = parse(url)
+
+    port = 80 if scheme == "http" else 443
+
+    #if it is https, let's wrap the socket with ssl library
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    s.connect((host, port))
 
     # GET /index.html HTTP/1.0
     # Host: example.org
