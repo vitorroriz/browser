@@ -14,7 +14,11 @@ def request(url):
 
     scheme, host, path = parse(url)
 
-    port = 80 if scheme == "http" else 443
+    #handle custom ports
+    if ":" in host:
+        host, port = host.split(":", 1)
+    else:
+        port = 80 if scheme == "http" else 443
 
     #if it is https, let's wrap the socket with ssl library
     if scheme == "https":
