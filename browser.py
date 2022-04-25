@@ -47,6 +47,16 @@ def request(url):
 
     return headers, body
 
+def show(body):
+    in_angle = False
+    for c in body:
+        if c == "<":
+            in_angle = True
+        elif c == ">":
+            in_angle = False
+        elif not in_angle:
+            print(c, end="")
+
 def main():
     url = "http://example.org/index.html"
     headers, body = request(url)
