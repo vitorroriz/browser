@@ -5,7 +5,12 @@ import ssl
 def parse(url):
     scheme, url = url.split("://", 1)
     assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
-    host, path = url.split("/", 1) #1 here is the number of occurrences to use for split
+    if "/" in url:
+        host, path = url.split("/", 1)
+    else:
+        host = url
+        path = ""
+
     path = "/" + path #adding "/" back to path
     return scheme, host, path
 
