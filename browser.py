@@ -13,9 +13,14 @@ def request(url):
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, 80))
 
+    # GET /index.html HTTP/1.0
+    # Host: example.org
+    #
+    #there is actually an empty lines indicating end of the request
     requestUtf8 = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
     s.send(requestUtf8)
 
+    #HTTP/1.0 200 OK
     response =  s.makefile("r", encoding="utf8", newline="\r\n")
     statusline = response.readline()
     version, status, explanation = statusline.split(" ", 2)
@@ -23,7 +28,7 @@ def request(url):
     #if condition returns False, AssertionError is raised:
     assert status == "200", "{}: {}".format(status, explanation)
 
-    #build header map
+    #build header (response) map
     headers = {}
     while True:
         line = response.readline()
