@@ -17,6 +17,7 @@ def request(url):
     #handle custom ports
     if ":" in host:
         host, port = host.split(":", 1)
+        port = int(port)
     else:
         port = 80 if scheme == "http" else 443
 
