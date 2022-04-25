@@ -1,4 +1,5 @@
 import socket
+import sys
 
 def parse(url):
     protocol = "http://"
@@ -9,6 +10,8 @@ def parse(url):
     return host, path
 
 def request(url):
+    import socket
+
     host, path = parse(url)
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     s.connect((host, 80))
@@ -57,10 +60,10 @@ def show(body):
         elif not in_angle:
             print(c, end="")
 
-def main():
-    url = "http://example.org/index.html"
+def load(url):
     headers, body = request(url)
-    print(body)
+    show(body)
 
+#"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
-    main()
+    load(sys.argv[1])
