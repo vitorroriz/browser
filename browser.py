@@ -38,7 +38,7 @@ def request(url):
     # Host: example.org
     #
     #there is actually an empty lines indicating end of the request
-    requestUtf8 = "GET {} HTTP/1.0\r\n".format(path).encode("utf8") + "Host: {}\r\n\r\n".format(host).encode("utf8")
+    requestUtf8 = "GET {} HTTP/1.1\r\n".format(path).encode("utf8") + "Host: {}\r\nConnection: {}\r\n\r\n".format(host, "close").encode("utf8")
     s.send(requestUtf8)
 
     #HTTP/1.0 200 OK
