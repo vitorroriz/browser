@@ -34,7 +34,8 @@ class Url:
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
         self.window = tkinter.Tk()
-        self.canvas = tkinter.Canvas(self.window, width = WIDTH, height=HEIGHT)
+        self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
+        self.canvas.pack()
 
     def request(self, url):
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
@@ -98,7 +99,8 @@ class Browser:
 
         return headers, body
 
-    def show(self, body):
+    def lex(self, body):
+        text = ""
         in_angle = False
         for c in body:
             if c == "<":
@@ -106,12 +108,22 @@ class Browser:
             elif c == ">":
                 in_angle = False
             elif not in_angle:
-                print(c, end="")
+               text += c
+        return text
 
     def load(self, url):
         headers, body = self.request(url)
-        self.show(body)
+        text = self.lex(body)
+        # self.canvas.create_rectangle(5, 5, 795, 595)
+        # self.canvas.create_oval(100, 100, 160, 150)
+        HSTEP, VSTEP = 13, 18
+        cursor_x, cursor_y = HSTEP, VSTEP
+        for c in text:
+            self.canvas.create_text(cursor_x, cursor_y, text=c)
+            cursor_x += HSTEP
+
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
     Browser().load(sys.argv[1])
+    tkinter.mainloop()
