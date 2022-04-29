@@ -1,87 +1,117 @@
 import socket
 import sys
 import ssl
+import tkinter
 
-def parse(url):
-    scheme, url = url.split("://", 1)
-    assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
-    if "/" in url:
-        host, path = url.split("/", 1)
-    else:
-        host = url
-        path = ""
+from numpy import empty
 
-    path = "/" + path #adding "/" back to path
+class Url:
+    def __init__(self, url):
+        self.url = url
+        self.scheme, self.host, self.path, self.port = self.parse(url)
 
-    #handle custom ports
-    if ":" in host:
-        host, port = host.split(":", 1)
-        port = int(port)
-    else:
-        port = 80 if scheme == "http" else 443
+    def parse(self, url):
+        scheme, url = url.split("://", 1)
+        assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
+        if "/" in url:
+            host, path = url.split("/", 1)
+        else:
+            host = url
+            path = ""
 
-    return scheme, host, path, port
+        path = "/" + path #adding "/" back to path
 
-def request(url):
-    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+        #handle custom ports
+        if ":" in host:
+            host, port = host.split(":", 1)
+            port = int(port)
+        else:
+            port = 80 if scheme == "http" else 443
 
-    scheme, host, path, port = parse(url)
+        return scheme, host, path, port
 
-    #if it is https, let's wrap the socket with ssl library
-    if scheme == "https":
-        ctx = ssl.create_default_context()
-        s = ctx.wrap_socket(s, server_hostname=host)
 
-    s.connect((host, port))
+class Browser:
+    def __init__(self, WIDTH = 800, HEIGHT = 600):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(self.window, width = WIDTH, height=HEIGHT)
 
-    # GET /index.html HTTP/1.0
-    # Host: example.org
-    #
-    #there is actually an empty lines indicating end of the request
-    requestUtf8 = "GET {} HTTP/1.1\r\n".format(path).encode("utf8") + "Host: {}\r\nConnection: close\r\nUser-Agent: Mr. Vivi\r\n\r\n".format(host).encode("utf8")
-    s.send(requestUtf8)
+    def request(self, url):
+        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
 
-    #HTTP/1.0 200 OK
-    response =  s.makefile("r", encoding="utf8", newline="\r\n")
-    statusline = response.readline()
-    version, status, explanation = statusline.split(" ", 2)
+        url = Url(url)
 
-    #if condition returns False, AssertionError is raised:
-    assert status == "200", "{}: {}".format(status, explanation)
+        #if it is https, let's wrap the socket with ssl library
+        if url.scheme == "https":
+            ctx = ssl.create_default_context()
+            s = ctx.wrap_socket(s, server_hostname=url.host)
 
-    #build header (response) map
-    headers = {}
-    while True:
-        line = response.readline()
-        if line == "\r\n": break
-        header, value = line.split(":", 1)
-        #normalize header, since it is case-insensitive
-        #strip value because white space is insignificat in http header values
-        #strip remove leading and trailing chars, default is whitespace
-        headers[header.lower()] = value.strip()
+        s.connect((url.host, url.port))
 
-    assert "transfer-encoding" not in headers
-    assert "content-enconding" not in headers
+        # GET /index.html HTTP/1.0
+        # Host: example.org
+        #
+        #there is actually an empty lines indicating end of the request
+        request = "GET {} HTTP/1.1\r\n".format(url.path).encode("utf8")
+        # headers = "Host: {}\r\nConnection: close\r\nUser-Agent: Mr. Vivi\r\n\r\n".format(host).encode("utf8")
 
-    body = response.read()
-    s.close()
+        headersMap = {"Host": url.host, "Connection": "close", "User-Agent": "Mr. Vivi"}
+        print(headersMap)
+        headers = ""
+        if headersMap:
+            for key in headersMap:
+                headers += key + ": " + headersMap[key] + "\r\n"
+        else:
+            headers = "\r\n"
 
-    return headers, body
+        headers += "\r\n"
+        print(headers) 
+        headers = headers.encode("utf8")
 
-def show(body):
-    in_angle = False
-    for c in body:
-        if c == "<":
-            in_angle = True
-        elif c == ">":
-            in_angle = False
-        elif not in_angle:
-            print(c, end="")
+        request += headers
+        s.send(request)
 
-def load(url):
-    headers, body = request(url)
-    show(body)
+        #HTTP/1.0 200 OK
+        response =  s.makefile("r", encoding="utf8", newline="\r\n")
+        statusline = response.readline()
+        version, status, explanation = statusline.split(" ", 2)
+
+        #if condition returns False, AssertionError is raised:
+        assert status == "200", "{}: {}".format(status, explanation)
+
+        #build header (response) map
+        headers = {}
+        while True:
+            line = response.readline()
+            if line == "\r\n": break
+            header, value = line.split(":", 1)
+            #normalize header, since it is case-insensitive
+            #strip value because white space is insignificat in http header values
+            #strip remove leading and trailing chars, default is whitespace
+            headers[header.lower()] = value.strip()
+
+        assert "transfer-encoding" not in headers
+        assert "content-enconding" not in headers
+
+        body = response.read()
+        s.close()
+
+        return headers, body
+
+    def show(self, body):
+        in_angle = False
+        for c in body:
+            if c == "<":
+                in_angle = True
+            elif c == ">":
+                in_angle = False
+            elif not in_angle:
+                print(c, end="")
+
+    def load(self, url):
+        headers, body = self.request(url)
+        self.show(body)
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
-    load(sys.argv[1])
+    Browser().load(sys.argv[1])
