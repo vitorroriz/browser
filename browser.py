@@ -1,7 +1,9 @@
+from bz2 import decompress
 import socket
 import sys
 import ssl
 import tkinter
+import gzip
 
 from numpy import empty
 
@@ -56,7 +58,7 @@ class Browser:
         request = "GET {} HTTP/1.1\r\n".format(url.path).encode("utf8")
         # headers = "Host: {}\r\nConnection: close\r\nUser-Agent: Mr. Vivi\r\n\r\n".format(host).encode("utf8")
 
-        headersMap = {"Host": url.host, "Connection": "close", "User-Agent": "Mr. Vivi"}
+        headersMap = {"Host": url.host, "Connection": "close", "User-Agent": "Mr. Vivi", "Accept-Encoding": "gzip"}
         print(headersMap)
         headers = ""
         if headersMap:
@@ -73,8 +75,8 @@ class Browser:
         s.send(request)
 
         #HTTP/1.0 200 OK
-        response =  s.makefile("r", encoding="utf8", newline="\r\n")
-        statusline = response.readline()
+        response =  s.makefile("rb", newline="\r\n")
+        statusline = response.readline().decode("utf8")
         version, status, explanation = statusline.split(" ", 2)
 
         #if condition returns False, AssertionError is raised:
@@ -83,7 +85,7 @@ class Browser:
         #build header (response) map
         headers = {}
         while True:
-            line = response.readline()
+            line = response.readline().decode("utf8")
             if line == "\r\n": break
             header, value = line.split(":", 1)
             #normalize header, since it is case-insensitive
@@ -91,13 +93,23 @@ class Browser:
             #strip remove leading and trailing chars, default is whitespace
             headers[header.lower()] = value.strip()
 
-        assert "transfer-encoding" not in headers
-        assert "content-enconding" not in headers
+        # assert "transfer-encoding" not in headers
+        # assert "content-enconding" not in headers
 
         body = response.read()
+        body = self.decompress(body, headers).decode("utf8")
+
         s.close()
 
         return headers, body
+
+    def decompress(self, body, headers):
+        #support only gzip
+        if("content-encoding" in headers):
+            assert headers["content-encoding"] == "gzip", "content-encoding: {}, not supported".format(headers["content-encoding"])
+            body = gzip.decompress(body)
+
+        return body
 
     def lex(self, body):
         text = ""
