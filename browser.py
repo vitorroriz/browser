@@ -97,9 +97,12 @@ class Browser:
             #strip remove leading and trailing chars, default is whitespace
             headers[header.lower()] = value.strip()
 
-        body = ""
+        body = bytearray() 
         if "transfer-encoding" in headers:
             body = self.decodeTransfer(response, headers)
+        else:
+            body = response.read()
+
         if "content-encoding" in headers:
             body = self.decodeContent(body, headers)
 
@@ -133,16 +136,36 @@ class Browser:
         data = gzip.decompress(data)
         return data 
 
-    def lex(self, body):
+    def lex(self, data):
         text = ""
         in_angle = False
-        for c in body:
+        in_body = False
+        tagContent = ""
+        tag = ""
+        copyToTag = False
+        for c in data:
             if c == "<":
                 in_angle = True
+                tagContent = ""
+                tag = ""
+                copyToTag = True
             elif c == ">":
+                print("@@tag=" + tag) 
                 in_angle = False
+                if tag == "/body":
+                    break
+                if tag == "body":
+                    in_body = True
+            elif in_angle:
+                if copyToTag and c != " ":
+                    tag += c
+                elif copyToTag and c == " ": 
+                    copyToTag = False
+
+                tagContent += c
             elif not in_angle:
-               text += c
+                if in_body:
+                    text += c
         return text
 
     def load(self, url):
