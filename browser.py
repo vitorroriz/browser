@@ -102,11 +102,12 @@ class Browser:
             #strip remove leading and trailing chars, default is whitespace
             headers[header.lower()] = value.strip()
 
-        # assert "transfer-encoding" not in headers
-        # assert "content-enconding" not in headers
+        body = ""
+        if "transfer-encoding" in headers:
+            body = self.decodeTransfer(response, headers)
+        if "content-encoding" in headers:
+            body = self.decodeContent(body, headers)
 
-        body = self.parseChunk(response)
-        body = self.decompress(body, headers)
         charset = 'utf-8'
         if 'content-type' in headers:
             charset = getHeaderValue(headers['content-type'], 'charset=')
@@ -118,27 +119,24 @@ class Browser:
         return headers, body
 
     # Transfer-Encoding is a hop-by-hop header, that is applied to a message between two nodes, not to a resource itself. Each segment of a multi-node connection can use different Transfer-Encoding values. If you want to compress data over the whole connection, use the end-to-end Content-Encoding header instead.
-    def decompress(self, body, headers):
-        #support only gzip
-        if("content-encoding" in headers):
-            assert headers["content-encoding"] == "gzip", "content-encoding: {}, not supported".format(headers["content-encoding"])
-            body = gzip.decompress(body)
+    def decodeTransfer(self, response, headers):
+        assert headers["transfer-encoding"] == "chunked", "transfer-encoding: {}, not supported".format(headers["transfer-encoding"])
 
-        return body
-
-    def parseChunk(self, response):
-        body = bytearray() 
-
+        data = bytearray() 
         while(True):
             line = response.readline()
             sz = int(line, 16) 
             if sz == 0:
                 break
-
             chunk = response.read(sz)
-            body += chunk
+            data += chunk
             crlf = response.readline()
-        return body
+        return data 
+
+    def decodeContent(self, data, headers):
+        assert headers["content-encoding"] == "gzip", "content-encoding: {}, not supported".format(headers["content-encoding"])
+        data = gzip.decompress(data)
+        return data 
 
     def lex(self, body):
         text = ""
@@ -162,9 +160,6 @@ class Browser:
         for c in text:
             self.canvas.create_text(cursor_x, cursor_y, text=c)
             cursor_x += HSTEP
-
-    
-
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
