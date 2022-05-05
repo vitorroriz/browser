@@ -1,12 +1,8 @@
-from bz2 import decompress
 import socket
 import sys
 import ssl
 import tkinter
 import gzip
-# from io import BytesIO
-
-from numpy import empty
 
 def getHeaderValue(values, id):
     pos = values.find(id)
@@ -39,7 +35,6 @@ class Url:
             port = 80 if scheme == "http" else 443
 
         return scheme, host, path, port
-
 
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
