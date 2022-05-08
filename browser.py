@@ -43,10 +43,14 @@ class Browser:
         self.HSTEP = 13 
         self.VSTEP = 18
         self.display_list = []
+        self.scroll = 0
+        self.SCROLL_STEP = 100
+
         self.window = tkinter.Tk()
+        self.window.bind("<Down>", self.scrolldown)
+
         self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
         self.canvas.pack()
-
 
     def request(self, url):
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
@@ -192,7 +196,12 @@ class Browser:
     
     def draw(self):
         for x, y, c in self.display_list:
-            self.canvas.create_text(x, y, text=c)
+            self.canvas.create_text(x, y - self.scroll, text=c)
+    
+    def scrolldown(self, e):
+        self.scroll += self.SCROLL_STEP
+        self.canvas.delete("all")
+        self.draw()
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
