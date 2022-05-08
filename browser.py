@@ -62,20 +62,20 @@ class Browser:
         request = "GET {} HTTP/1.1\r\n".format(url.path).encode("utf8")
         # headers = "Host: {}\r\nConnection: close\r\nUser-Agent: Mr. Vivi\r\n\r\n".format(host).encode("utf8")
 
-        headersMap = {"Host": url.host, "Connection": "close", "User-Agent": "Mr. Vivi", "Accept-Encoding": "gzip"}
-        print(headersMap)
-        headers = ""
-        if headersMap:
-            for key in headersMap:
-                headers += key + ": " + headersMap[key] + "\r\n"
+        requestHeadersMap = {"Host": url.host, "Connection": "close", "User-Agent": "Mr. Vivi", "Accept-Encoding": "gzip"}
+        # print(headersMap)
+        requestHeaders = ""
+        if requestHeadersMap:
+            for key in requestHeadersMap:
+                requestHeaders += key + ": " + requestHeadersMap[key] + "\r\n"
         else:
-            headers = "\r\n"
+            requestHeaders = "\r\n"
 
-        headers += "\r\n"
-        print(headers) 
-        headers = headers.encode("utf8")
+        requestHeaders += "\r\n"
+        # print(headers) 
+        requestHeaders = requestHeaders.encode("utf8")
 
-        request += headers
+        request += requestHeaders
         s.send(request)
 
         #HTTP/1.0 200 OK
@@ -87,34 +87,34 @@ class Browser:
         assert status == "200", "{}: {}".format(status, explanation)
 
         #build header (response) map
-        headers = {}
+        responseHeaderMap = {}
         while True:
             line = response.readline().decode("utf8")
             if line == "\r\n": break
-            header, value = line.split(":", 1)
+            key, value = line.split(":", 1)
             #normalize header, since it is case-insensitive
             #strip value because white space is insignificat in http header values
             #strip remove leading and trailing chars, default is whitespace
-            headers[header.lower()] = value.strip()
+            responseHeaderMap[key.lower()] = value.strip()
 
         body = bytearray() 
-        if "transfer-encoding" in headers:
-            body = self.decodeTransfer(response, headers)
+        if "transfer-encoding" in responseHeaderMap:
+            body = self.decodeTransfer(response, responseHeaderMap)
         else:
             body = response.read()
 
-        if "content-encoding" in headers:
-            body = self.decodeContent(body, headers)
+        if "content-encoding" in responseHeaderMap:
+            body = self.decodeContent(body, responseHeaderMap)
 
         charset = 'utf-8'
-        if 'content-type' in headers:
-            charset = getHeaderValue(headers['content-type'], 'charset=')
+        if 'content-type' in responseHeaderMap:
+            charset = getHeaderValue(responseHeaderMap['content-type'], 'charset=')
 
         body = body.decode(charset)
 
         s.close()
 
-        return headers, body
+        return responseHeaderMap, body
 
     # Transfer-Encoding is a hop-by-hop header, that is applied to a message between two nodes, not to a resource itself. Each segment of a multi-node connection can use different Transfer-Encoding values. If you want to compress data over the whole connection, use the end-to-end Content-Encoding header instead.
     def decodeTransfer(self, response, headers):
@@ -150,7 +150,7 @@ class Browser:
                 tag = ""
                 copyToTag = True
             elif c == ">":
-                print("@@tag=" + tag) 
+                # print("@@tag=" + tag) 
                 in_angle = False
                 if tag == "/body":
                     break
