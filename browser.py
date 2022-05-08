@@ -196,6 +196,8 @@ class Browser:
     
     def draw(self):
         for x, y, c in self.display_list:
+            if y > self.scroll + self.HEIGHT: continue
+            if y + self.VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)
     
     def scrolldown(self, e):
