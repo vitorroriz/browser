@@ -38,9 +38,15 @@ class Url:
 
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
+        self.WIDTH = 800
+        self.HEIGHT = 600
+        self.HSTEP = 13 
+        self.VSTEP = 18
+        self.display_list = []
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
         self.canvas.pack()
+
 
     def request(self, url):
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
@@ -63,7 +69,6 @@ class Browser:
         # headers = "Host: {}\r\nConnection: close\r\nUser-Agent: Mr. Vivi\r\n\r\n".format(host).encode("utf8")
 
         requestHeadersMap = {"Host": url.host, "Connection": "close", "User-Agent": "Mr. Vivi", "Accept-Encoding": "gzip"}
-        # print(headersMap)
         requestHeaders = ""
         if requestHeadersMap:
             for key in requestHeadersMap:
@@ -72,7 +77,6 @@ class Browser:
             requestHeaders = "\r\n"
 
         requestHeaders += "\r\n"
-        # print(headers) 
         requestHeaders = requestHeaders.encode("utf8")
 
         request += requestHeaders
@@ -167,17 +171,28 @@ class Browser:
                 if in_body:
                     text += c
         return text
+    
+    def layout(self, text):
+        display_list = []
+        cursor_x, cursor_y = self.HSTEP, self.VSTEP
+        for c in text:
+            display_list.append((cursor_x, cursor_y, c))
+            cursor_x += self.HSTEP
+            if(cursor_x > self.WIDTH - self.HSTEP):
+                cursor_x = self.HSTEP
+                cursor_y += self.VSTEP
+
+        return display_list
 
     def load(self, url):
         headers, body = self.request(url)
         text = self.lex(body)
-        # self.canvas.create_rectangle(5, 5, 795, 595)
-        # self.canvas.create_oval(100, 100, 160, 150)
-        HSTEP, VSTEP = 13, 18
-        cursor_x, cursor_y = HSTEP, VSTEP
-        for c in text:
-            self.canvas.create_text(cursor_x, cursor_y, text=c)
-            cursor_x += HSTEP
+        self.display_list = self.layout(text)
+        self.draw()
+    
+    def draw(self):
+        for x, y, c in self.display_list:
+            self.canvas.create_text(x, y, text=c)
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
