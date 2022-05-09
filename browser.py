@@ -45,10 +45,12 @@ class Browser:
         self.LINE_BREAK_STEP = 1.5 * self.VSTEP
         self.display_list = []
         self.scroll = 0
-        self.SCROLL_STEP = 100
+        self.SCROLL_STEP = 18 
 
         self.window = tkinter.Tk()
-        self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<Down>", self.onScrollDown)
+        self.window.bind("<Up>", self.onScrollUp)
+        self.window.bind("<MouseWheel>", self.onMouseWheel)
 
         self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
         self.canvas.pack()
@@ -197,16 +199,38 @@ class Browser:
         self.display_list = self.layout(text)
         self.draw()
     
+    def redraw(self):
+        self.canvas.delete("all")
+        self.draw()
+
     def draw(self):
         for x, y, c in self.display_list:
             if y > self.scroll + self.HEIGHT: continue
             if y + self.VSTEP < self.scroll: continue
             self.canvas.create_text(x, y - self.scroll, text=c)
     
-    def scrolldown(self, e):
-        self.scroll += self.SCROLL_STEP
-        self.canvas.delete("all")
-        self.draw()
+    def scrollDown(self, nTimes):
+        self.scroll += nTimes * self.SCROLL_STEP
+        self.redraw()
+    
+    def scrollUp(self, nTimes):
+        self.scroll -= nTimes * self.SCROLL_STEP
+        if self.scroll < 0:
+            self.scroll = 0
+        self.redraw()
+    
+    def onScrollDown(self, e):
+        self.scrollDown(1)
+
+    def onScrollUp(self, e):
+        self.scrollUp(1)
+
+    def onMouseWheel(self, e):
+        #todo: add support for linux and mac platforms since delta module, delta sign and event might differ.
+        if e.delta > 0:
+            self.scrollUp(e.delta / 120)
+        else:
+            self.scrollDown(-e.delta / 120)
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
