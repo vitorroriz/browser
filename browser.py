@@ -40,8 +40,9 @@ class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
         self.WIDTH = 800
         self.HEIGHT = 600
-        self.HSTEP = 13 
+        self.HSTEP = 8.5 
         self.VSTEP = 18
+        self.LINE_BREAK_STEP = 1.5 * self.VSTEP
         self.display_list = []
         self.scroll = 0
         self.SCROLL_STEP = 100
@@ -180,11 +181,13 @@ class Browser:
         display_list = []
         cursor_x, cursor_y = self.HSTEP, self.VSTEP
         for c in text:
-            display_list.append((cursor_x, cursor_y, c))
+            isNewLineCharacter = c == '\n'
             cursor_x += self.HSTEP
-            if(cursor_x > self.WIDTH - self.HSTEP):
+            if(isNewLineCharacter or cursor_x > self.WIDTH - self.HSTEP):
+                #new line
                 cursor_x = self.HSTEP
-                cursor_y += self.VSTEP
+                cursor_y += self.LINE_BREAK_STEP if isNewLineCharacter else self.VSTEP
+            display_list.append((cursor_x, cursor_y, c))
 
         return display_list
 
