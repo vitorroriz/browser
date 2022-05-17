@@ -2,6 +2,7 @@ import socket
 import sys
 import ssl
 import tkinter
+import tkinter.font
 import gzip
 
 def getHeaderValue(values, id):
@@ -40,7 +41,7 @@ class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
         self.WIDTH = 800
         self.HEIGHT = 600
-        self.HSTEP = 8.5 
+        self.HSTEP = 9 
         self.VSTEP = 18
         self.LINE_BREAK_STEP = 1.5 * self.VSTEP
         self.display_list = []
@@ -48,6 +49,9 @@ class Browser:
         self.SCROLL_STEP = 18 
 
         self.window = tkinter.Tk()
+        #font hard-coded for now, later it has to come from css properties
+        self.font = tkinter.font.Font(family="Times", size=16)
+
         self.window.bind("<Down>", self.onScrollDown)
         self.window.bind("<Up>", self.onScrollUp)
         self.window.bind("<MouseWheel>", self.onMouseWheel)
@@ -182,14 +186,25 @@ class Browser:
     def layout(self, text):
         display_list = []
         cursor_x, cursor_y = self.HSTEP, self.VSTEP
-        for c in text:
-            isNewLineCharacter = c == '\n'
-            cursor_x += self.HSTEP
-            if(isNewLineCharacter or cursor_x > self.WIDTH - self.HSTEP):
-                #new line
+        wordList = text.split(' ')
+        lineSpace = self.font.metrics("linespace")
+        whiteSpaceSpace = self.font.measure(" ")
+        for word in wordList:
+            wordWidth = self.font.measure(word)
+
+            hasNewLineCharacter = '\n' in word
+            if cursor_x + wordWidth > self.WIDTH - self.HSTEP:
                 cursor_x = self.HSTEP
-                cursor_y += self.LINE_BREAK_STEP if isNewLineCharacter else self.VSTEP
-            display_list.append((cursor_x, cursor_y, c))
+                cursor_y +=  lineSpace
+
+            if word != '':
+                display_list.append((cursor_x, cursor_y, word))
+
+            cursor_x += wordWidth + 1 * whiteSpaceSpace 
+            
+            if(hasNewLineCharacter):
+                cursor_x = self.HSTEP
+                cursor_y +=  lineSpace * 1.25
 
         return display_list
 
@@ -207,7 +222,7 @@ class Browser:
         for x, y, c in self.display_list:
             if y > self.scroll + self.HEIGHT: continue
             if y + self.VSTEP < self.scroll: continue
-            self.canvas.create_text(x, y - self.scroll, text=c)
+            self.canvas.create_text(x, y - self.scroll, text=c, anchor="nw", font=self.font)
     
     def scrollDown(self, nTimes):
         self.scroll += nTimes * self.SCROLL_STEP
