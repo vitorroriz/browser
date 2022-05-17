@@ -195,12 +195,12 @@ class Browser:
             hasNewLineCharacter = '\n' in word
             if cursor_x + wordWidth > self.WIDTH - self.HSTEP:
                 cursor_x = self.HSTEP
-                cursor_y +=  lineSpace
+                cursor_y +=  lineSpace * 1.25
 
             if word != '':
                 display_list.append((cursor_x, cursor_y, word))
 
-            cursor_x += wordWidth + 1 * whiteSpaceSpace 
+            cursor_x += wordWidth + whiteSpaceSpace 
             
             if(hasNewLineCharacter):
                 cursor_x = self.HSTEP
