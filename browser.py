@@ -4,6 +4,7 @@ import ssl
 import tkinter
 import tkinter.font
 import gzip
+from dataclasses import dataclass
 
 def getHeaderValue(values, id):
     pos = values.find(id)
@@ -11,6 +12,14 @@ def getHeaderValue(values, id):
     pos = values.find(' ') 
     if pos == -1: return values
     return values[:pos]
+
+@dataclass
+class Text:
+    text: str
+
+@dataclass
+class Tag:
+    tag: str
 
 class Url:
     def __init__(self, url):
@@ -152,59 +161,66 @@ class Browser:
         return data 
 
     def lex(self, data):
+        out = []
         text = ""
-        in_angle = False
-        in_body = False
-        tagContent = ""
-        tag = ""
-        copyToTag = False
+        in_tag = False
         for c in data:
             if c == "<":
-                in_angle = True
-                tagContent = ""
-                tag = ""
-                copyToTag = True
+                in_tag = True
+                if text: out.append(Text(text))
+                text = ""
             elif c == ">":
-                # print("@@tag=" + tag) 
-                in_angle = False
-                if tag == "/body":
-                    break
-                if tag == "body":
-                    in_body = True
-            elif in_angle:
-                if copyToTag and c != " ":
-                    tag += c
-                elif copyToTag and c == " ": 
-                    copyToTag = False
+                in_tag = False
+                out.append(Tag(text))
+                text = ""
+            else:
+                text += c
 
-                tagContent += c
-            elif not in_angle:
-                if in_body:
-                    text += c
-        return text
+        if not in_tag and text:
+            out.append(Text(text))
+
+        return out 
     
-    def layout(self, text):
+    def layout(self, tokens):
         display_list = []
         cursor_x, cursor_y = self.HSTEP, self.VSTEP
-        wordList = text.split(' ')
-        lineSpace = self.font.metrics("linespace")
-        whiteSpaceSpace = self.font.measure(" ")
-        for word in wordList:
-            wordWidth = self.font.measure(word)
+        weight = "normal"
+        style = "roman"
+        in_body = False
 
-            hasNewLineCharacter = '\n' in word
-            if cursor_x + wordWidth > self.WIDTH - self.HSTEP:
-                cursor_x = self.HSTEP
-                cursor_y +=  lineSpace * 1.25
-
-            if word != '':
-                display_list.append((cursor_x, cursor_y, word))
-
-            cursor_x += wordWidth + whiteSpaceSpace 
-            
-            if(hasNewLineCharacter):
-                cursor_x = self.HSTEP
-                cursor_y +=  lineSpace * 1.25
+        for token in tokens:
+            if isinstance(token, Text):
+                if not in_body: continue #let's just layout text within <body>
+                font = tkinter.font.Font(size=16, weight=weight, slant=style)
+                whiteSpaceSpace = font.measure(" ")
+                lineSpace = font.metrics("linespace")
+                wordList = token.text.split(' ')
+                for word in wordList:
+                    if word == '': continue
+                    wordWidth = font.measure(word)
+                    hasNewLineCharacter = '\n' in word
+                    if cursor_x + wordWidth > self.WIDTH - self.HSTEP:
+                        cursor_x = self.HSTEP
+                        cursor_y +=  lineSpace * 1.25
+                    display_list.append((cursor_x, cursor_y, word, font))
+                    cursor_x += wordWidth + whiteSpaceSpace 
+                    
+                    if(hasNewLineCharacter):
+                        cursor_x = self.HSTEP
+                        cursor_y +=  lineSpace * 1.25
+            #it is a Tag:
+            elif token.tag == "body":
+                in_body = True
+            elif token.tag == "/body":
+                in_body = False
+            elif token.tag == "i":
+                style = "italic"
+            elif token.tag == "/i":
+                style = "roman"
+            elif token.tag == "b":
+                weight = "bold"
+            elif token.tag == "/b":
+                weight = "normal" 
 
         return display_list
 
@@ -219,10 +235,10 @@ class Browser:
         self.draw()
 
     def draw(self):
-        for x, y, c in self.display_list:
+        for x, y, text, font in self.display_list:
             if y > self.scroll + self.HEIGHT: continue
             if y + self.VSTEP < self.scroll: continue
-            self.canvas.create_text(x, y - self.scroll, text=c, anchor="nw", font=self.font)
+            self.canvas.create_text(x, y - self.scroll, text=text, anchor="nw", font=font)
     
     def scrollDown(self, nTimes):
         self.scroll += nTimes * self.SCROLL_STEP
