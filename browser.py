@@ -204,12 +204,12 @@ class Browser:
                         cursor_y +=  lineSpace * 1.25
                     display_list.append((cursor_x, cursor_y, word, font))
                     cursor_x += wordWidth + whiteSpaceSpace 
-                    
+
                     if(hasNewLineCharacter):
                         cursor_x = self.HSTEP
                         cursor_y +=  lineSpace * 1.25
             #it is a Tag:
-            elif token.tag == "body":
+            elif "body" in token.tag:
                 in_body = True
             elif token.tag == "/body":
                 in_body = False
