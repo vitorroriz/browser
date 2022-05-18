@@ -13,14 +13,6 @@ def getHeaderValue(values, id):
     if pos == -1: return values
     return values[:pos]
 
-@dataclass
-class Text:
-    text: str
-
-@dataclass
-class Tag:
-    tag: str
-
 class Url:
     def __init__(self, url):
         self.url = url
@@ -46,6 +38,68 @@ class Url:
 
         return scheme, host, path, port
 
+@dataclass
+class Text:
+    text: str
+
+@dataclass
+class Tag:
+    tag: str
+
+class Layout:
+    def __init__(self, tokens, HSTEP, VSTEP, WIDTH):
+        self.display_list = []
+        self.cursor_x, self.cursor_y = HSTEP, VSTEP
+        self.weight = "normal"
+        self.style = "roman"
+        self.in_body = False
+        self.HSTEP = HSTEP
+        self.VSTEP = VSTEP
+        self.WIDTH = WIDTH
+
+        for token in tokens:
+            self.processToken(token)
+
+    def processToken(self, token):
+        if isinstance(token, Text):
+            self.processText(token)
+        else: #tag
+            self.processTag(token)
+
+    def processText(self, token):
+        if not self.in_body: return #let's just layout text within <body>
+        font = tkinter.font.Font(size=16, weight=self.weight, slant=self.style)
+        whiteSpaceSpace = font.measure(" ")
+        lineSpace = font.metrics("linespace")
+        wordList = token.text.split(' ')
+
+        for word in wordList:
+            if word == '': continue
+            wordWidth = font.measure(word)
+            hasNewLineCharacter = '\n' in word
+            if self.cursor_x + wordWidth > self.WIDTH - self.HSTEP:
+                self.cursor_x = self.HSTEP
+                self.cursor_y +=  lineSpace * 1.25
+            self.display_list.append((self.cursor_x, self.cursor_y, word, font))
+            self.cursor_x += wordWidth + whiteSpaceSpace 
+
+            if(hasNewLineCharacter):
+                self.cursor_x = self.HSTEP
+                self.cursor_y +=  lineSpace * 1.25
+
+    def processTag(self, token):
+        if "body" in token.tag:
+            self.in_body = True
+        elif token.tag == "/body":
+            self.in_body = False
+        elif token.tag == "i":
+            self.style = "italic"
+        elif token.tag == "/i":
+            self.style = "roman"
+        elif token.tag == "b":
+            self.weight = "bold"
+        elif token.tag == "/b":
+            self.weight = "normal" 
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
         self.WIDTH = 800
@@ -181,53 +235,10 @@ class Browser:
 
         return out 
     
-    def layout(self, tokens):
-        display_list = []
-        cursor_x, cursor_y = self.HSTEP, self.VSTEP
-        weight = "normal"
-        style = "roman"
-        in_body = False
-
-        for token in tokens:
-            if isinstance(token, Text):
-                if not in_body: continue #let's just layout text within <body>
-                font = tkinter.font.Font(size=16, weight=weight, slant=style)
-                whiteSpaceSpace = font.measure(" ")
-                lineSpace = font.metrics("linespace")
-                wordList = token.text.split(' ')
-                for word in wordList:
-                    if word == '': continue
-                    wordWidth = font.measure(word)
-                    hasNewLineCharacter = '\n' in word
-                    if cursor_x + wordWidth > self.WIDTH - self.HSTEP:
-                        cursor_x = self.HSTEP
-                        cursor_y +=  lineSpace * 1.25
-                    display_list.append((cursor_x, cursor_y, word, font))
-                    cursor_x += wordWidth + whiteSpaceSpace 
-
-                    if(hasNewLineCharacter):
-                        cursor_x = self.HSTEP
-                        cursor_y +=  lineSpace * 1.25
-            #it is a Tag:
-            elif "body" in token.tag:
-                in_body = True
-            elif token.tag == "/body":
-                in_body = False
-            elif token.tag == "i":
-                style = "italic"
-            elif token.tag == "/i":
-                style = "roman"
-            elif token.tag == "b":
-                weight = "bold"
-            elif token.tag == "/b":
-                weight = "normal" 
-
-        return display_list
-
     def load(self, url):
         headers, body = self.request(url)
-        text = self.lex(body)
-        self.display_list = self.layout(text)
+        tokens = self.lex(body)
+        self.display_list = Layout(tokens, self.HSTEP, self.VSTEP, self.WIDTH).display_list
         self.draw()
     
     def redraw(self):
