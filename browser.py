@@ -3,7 +3,7 @@ import sys
 import ssl
 import tkinter
 import tkinter.font
-import gzip
+import zlib
 from dataclasses import dataclass
 
 def getHeaderValue(values, id):
@@ -211,7 +211,7 @@ class Browser:
 
     def decodeContent(self, data, headers):
         assert headers["content-encoding"] == "gzip", "content-encoding: {}, not supported".format(headers["content-encoding"])
-        data = gzip.decompress(data)
+        data = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(data)
         return data 
 
     def lex(self, data):
