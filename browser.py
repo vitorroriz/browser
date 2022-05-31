@@ -49,6 +49,7 @@ class Tag:
 class Layout:
     def __init__(self, tokens, HSTEP, VSTEP, WIDTH):
         self.display_list = []
+        self.line = []
         self.cursor_x, self.cursor_y = HSTEP, VSTEP
         self.weight = "normal"
         self.style = "roman"
@@ -59,6 +60,9 @@ class Layout:
 
         for token in tokens:
             self.processToken(token)
+        
+        #in case tokens didn't reach flush condition, let's force a flush here
+        self.flush()
 
     def processToken(self, token):
         if isinstance(token, Text):
@@ -70,7 +74,6 @@ class Layout:
         if not self.in_body: return #let's just layout text within <body>
         font = tkinter.font.Font(size=16, weight=self.weight, slant=self.style)
         whiteSpaceSpace = font.measure(" ")
-        lineSpace = font.metrics("linespace")
         wordList = token.text.split(' ')
 
         for word in wordList:
@@ -78,14 +81,31 @@ class Layout:
             wordWidth = font.measure(word)
             hasNewLineCharacter = '\n' in word
             if self.cursor_x + wordWidth > self.WIDTH - self.HSTEP:
-                self.cursor_x = self.HSTEP
-                self.cursor_y +=  lineSpace * 1.25
-            self.display_list.append((self.cursor_x, self.cursor_y, word, font))
+                self.flush()
+
+            self.line.append((self.cursor_x, word, font))
             self.cursor_x += wordWidth + whiteSpaceSpace 
 
             if(hasNewLineCharacter):
-                self.cursor_x = self.HSTEP
-                self.cursor_y +=  lineSpace * 1.25
+                self.flush()
+    
+    def flush(self):
+        if not self.line: return
+        metrics = [font.metrics() for x, word, font in self.line]
+        maxAscent = max(metric["ascent"] for metric in metrics)
+        #todo: move magic constants somhere nice
+        # 1.25 factor for upper leading
+        baseline = self.cursor_y + 1.25 * maxAscent
+
+        for x, word, font in self.line:
+            y = baseline - font.metrics("ascent")
+            self.display_list.append((x, y, word, font))
+
+        self.cursor_x = self.HSTEP
+        self.line = []
+        maxDescent = max(metric["descent"] for metric in metrics)
+        # 1.25 factor for bottom leading
+        self.cursor_y = baseline + 1.25 * maxDescent
 
     def processTag(self, token):
         if "body" in token.tag:
@@ -100,6 +120,7 @@ class Layout:
             self.weight = "bold"
         elif token.tag == "/b":
             self.weight = "normal" 
+    
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
         self.WIDTH = 800
