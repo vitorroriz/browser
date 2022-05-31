@@ -120,6 +120,11 @@ class Layout:
             self.weight = "bold"
         elif token.tag == "/b":
             self.weight = "normal" 
+        elif token.tag == "/br":
+            self.flush()
+        elif token.tag == "p":
+            self.flush()
+            self.cursor_y += self.VSTEP
     
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
