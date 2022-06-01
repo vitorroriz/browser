@@ -288,6 +288,7 @@ class Browser:
             return self.getFileContent(url)
         else:
             raise NameError("Scheme {} is not supported".format(url.scheme))
+            
     def load(self, url):
         url = Url(url)
         text = self.getUrlContent(url)
