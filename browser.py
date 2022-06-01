@@ -6,6 +6,18 @@ import tkinter.font
 import zlib
 from dataclasses import dataclass
 
+#caching fonts to make use of caching system for metrics that happens on font object level
+FONTS = {}
+
+def getFont(size, weight, slant):
+    key = (size, weight, slant)
+    if key in FONTS:
+        return FONTS[key]
+
+    font = tkinter.font.Font(size=size, weight=weight, slant=slant)
+    FONTS[key] = font
+    return FONTS[key]
+
 def getHeaderValue(values, id):
     pos = values.find(id)
     values = values[pos + len(id):]
@@ -20,7 +32,11 @@ class Url:
 
     def parse(self, url):
         scheme, url = url.split("://", 1)
-        assert scheme in ["http", "https"], "Unknown scheme {}".format(scheme)
+        assert scheme in ["http", "https", "file"], "Unknown scheme {}".format(scheme)
+        if scheme == "file":
+            path = url
+            return scheme, "", path, -1 
+
         if "/" in url:
             host, path = url.split("/", 1)
         else:
@@ -72,7 +88,8 @@ class Layout:
 
     def processText(self, token):
         if not self.in_body: return #let's just layout text within <body>
-        font = tkinter.font.Font(size=16, weight=self.weight, slant=self.style)
+        # font = tkinter.font.Font(size=16, weight=self.weight, slant=self.style)
+        font = getFont(size=16, weight=self.weight, slant=self.style)
         whiteSpaceSpace = font.measure(" ")
         wordList = token.text.split(' ')
 
@@ -120,7 +137,7 @@ class Layout:
             self.weight = "bold"
         elif token.tag == "/b":
             self.weight = "normal" 
-        elif token.tag == "/br":
+        elif token.tag == "br":
             self.flush()
         elif token.tag == "p":
             self.flush()
@@ -148,11 +165,9 @@ class Browser:
         self.canvas = tkinter.Canvas(self.window, width=WIDTH, height=HEIGHT)
         self.canvas.pack()
 
-    def request(self, url):
+    def request(self, url: Url):
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
         s.setblocking(True)
-
-        url = Url(url)
 
         #if it is https, let's wrap the socket with ssl library
         if url.scheme == "https":
@@ -218,7 +233,7 @@ class Browser:
 
         s.close()
 
-        return responseHeaderMap, body
+        return body
 
     # Transfer-Encoding is a hop-by-hop header, that is applied to a message between two nodes, not to a resource itself. Each segment of a multi-node connection can use different Transfer-Encoding values. If you want to compress data over the whole connection, use the end-to-end Content-Encoding header instead.
     def decodeTransfer(self, response, headers):
@@ -261,9 +276,22 @@ class Browser:
 
         return out 
     
+    def getFileContent(self, url: Url):
+        file = open(url.path, "r")
+        return file.read()
+
+    def getUrlContent(self, url: Url):
+        scheme = url.scheme
+        if(scheme == "http" or scheme == "https"):
+            return self.request(url)
+        elif(scheme == "file"):
+            return self.getFileContent(url)
+        else:
+            raise NameError("Scheme {} is not supported".format(url.scheme))
     def load(self, url):
-        headers, body = self.request(url)
-        tokens = self.lex(body)
+        url = Url(url)
+        text = self.getUrlContent(url)
+        tokens = self.lex(text)
         self.display_list = Layout(tokens, self.HSTEP, self.VSTEP, self.WIDTH).display_list
         self.draw()
     
