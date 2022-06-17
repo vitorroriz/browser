@@ -278,7 +278,9 @@ class Browser:
     
     def getFileContent(self, url: Url):
         file = open(url.path, "r")
-        return file.read()
+        content = file.read()
+        file.close()
+        return content
 
     def getUrlContent(self, url: Url):
         scheme = url.scheme
