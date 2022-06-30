@@ -9,6 +9,7 @@ from dataclasses import dataclass
 #caching fonts to make use of caching system for metrics that happens on font object level
 FONTS = {}
 
+
 def getFont(size, weight, slant):
     key = (size, weight, slant)
     if key in FONTS:
@@ -54,13 +55,75 @@ class Url:
 
         return scheme, host, path, port
 
-@dataclass
-class Text:
-    text: str
+class HTMLParser:
+    def __init__(self, body):
+        self.body = body
+        self.unfinishedTags = []
 
-@dataclass
-class Tag:
-    tag: str
+    def parse(self):
+        text = ""
+        inTag = False
+
+        for c in self.body:
+            if c == "<":
+                inTag = True
+                if text: self.addText(text)
+                text = ""
+            elif c == ">":
+                inTag = False
+                self.addTag(text)
+                text = ""
+            else:
+                text += c
+
+        if not inTag and text:
+            self.addText(Text)
+
+        return self.finish()
+
+    def addText(self, text):
+        #text is added as child of last unfinished node
+        parent = self.unfinishedTags[-1]
+        node = Text(text, parent)
+        parent.children.append(node)
+
+    def addTag(self, tag):
+        if tag.startswith("/"):
+            #closing tag needs to remove and finish last unfinished node
+            if len(self.unfinishedTags) == 1: return #last tag won't be poped, so we won't loose it, finish will pop it
+
+            node = self.unfinishedTags.pop()
+            parent = self.unfinishedTags[-1]
+            parent.children.append(node)
+        else:
+            #open tag will add to unfinished tags list
+            parent = self.unfinishedTags[-1] if self.unfinishedTags else None
+            node = Element(tag, parent)
+            self.unfinishedTags.append(node)
+
+    def finish(self):
+        if len(self.unfinishedTags) == 0:
+            #note: what is this?
+            self.addTag("html")
+        while len(self.unfinishedTags) > 1:
+            #are we fixed a ill-formed document here?
+            node = self.unfinishedTags.pop()
+            parent = self.unfinishedTags[-1]
+            parent.children.append(node)
+
+        return self.unfinishedTags.pop() #pops the root node
+
+class Text:
+    def __init__(self, text, parent):
+        self.text = text
+        self.children = []
+        self.parent = parent
+
+class Element:
+    def __init__(self, tag, parent):
+        self.tag = tag 
+        self.children = []
+        self.parent = parent
 
 class Layout:
     def __init__(self, tokens, HSTEP, VSTEP, WIDTH):
@@ -266,7 +329,7 @@ class Browser:
                 text = ""
             elif c == ">":
                 in_tag = False
-                out.append(Tag(text))
+                out.append(Element(text))
                 text = ""
             else:
                 text += c
