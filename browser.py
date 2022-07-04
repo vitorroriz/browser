@@ -9,7 +9,6 @@ from dataclasses import dataclass
 #caching fonts to make use of caching system for metrics that happens on font object level
 FONTS = {}
 
-
 def getFont(size, weight, slant):
     key = (size, weight, slant)
     if key in FONTS:
@@ -55,6 +54,11 @@ class Url:
             port = 80 if scheme == "http" else 443
 
         return scheme, host, path, port
+
+def printTree(node, indent=0):
+    print("  " * indent, node)
+    for child in node.children:
+        printTree(child, indent + 1)
 
 class HTMLParser:
     def __init__(self, body):
@@ -119,12 +123,18 @@ class Text:
         self.text = text
         self.children = []
         self.parent = parent
+    
+    def __repr__(self) -> str:
+        return repr(self.text)
 
 class Element:
     def __init__(self, tag, parent=None):
         self.tag = tag 
         self.children = []
         self.parent = parent
+
+    def __repr__(self) -> str:
+        return "<" + self.tag + ">"
 
 class Layout:
     def __init__(self, tokens, HSTEP, VSTEP, WIDTH):
@@ -398,5 +408,12 @@ class Browser:
 
 #"...when the interpreter runs a module, the __name__ variable will be set as  __main__ if the module that is being run is the main program."
 if __name__ == '__main__':
-    Browser().load(sys.argv[1])
+    browser = Browser()
+    url = Url(sys.argv[1])
+
+    content = browser.getUrlContent(url)
+    nodes = HTMLParser(content).parse()
+    printTree(nodes)
+
+    browser.load(url.url)
     tkinter.mainloop()
