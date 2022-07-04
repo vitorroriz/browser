@@ -21,6 +21,7 @@ def getFont(size, weight, slant):
 
 def getHeaderValue(values, id):
     pos = values.find(id)
+    if pos == -1: return ""
     values = values[pos + len(id):]
     pos = values.find(' ') 
     if pos == -1: return values
@@ -114,13 +115,13 @@ class HTMLParser:
         return self.unfinishedTags.pop() #pops the root node
 
 class Text:
-    def __init__(self, text, parent):
+    def __init__(self, text, parent=None):
         self.text = text
         self.children = []
         self.parent = parent
 
 class Element:
-    def __init__(self, tag, parent):
+    def __init__(self, tag, parent=None):
         self.tag = tag 
         self.children = []
         self.parent = parent
@@ -290,7 +291,8 @@ class Browser:
 
         charset = 'utf-8'
         if 'content-type' in responseHeaderMap:
-            charset = getHeaderValue(responseHeaderMap['content-type'], 'charset=')
+            charsetFromHeader = getHeaderValue(responseHeaderMap['content-type'], 'charset=')
+            charset = charsetFromHeader if charsetFromHeader else charset
 
         body = body.decode(charset)
 
