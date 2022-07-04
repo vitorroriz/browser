@@ -82,17 +82,22 @@ class HTMLParser:
                 text += c
 
         if not inTag and text:
-            self.addText(Text)
+            self.addText(text)
 
         return self.finish()
 
     def addText(self, text):
+        if text.isspace(): return
+
         #text is added as child of last unfinished node
         parent = self.unfinishedTags[-1]
         node = Text(text, parent)
         parent.children.append(node)
 
     def addTag(self, tag):
+        #we won't be handling tags with '!' prefix like !doctype or comments
+        if tag.startswith("!"): return
+        
         if tag.startswith("/"):
             #closing tag needs to remove and finish last unfinished node
             if len(self.unfinishedTags) == 1: return #last tag won't be poped, so we won't loose it, finish will pop it
