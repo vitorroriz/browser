@@ -64,6 +64,31 @@ class HTMLParser:
     def __init__(self, body):
         self.body = body
         self.unfinishedTags = []
+        self.SELF_CLOSING_TAGS = [
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr",
+        ]
+
+    #Get tag and attributes from a raw tag text 
+    def getTagAndAttributes(self, text):
+        #we won't handle whitespace in values, so we can split on whitespace
+        parts = text.split()
+        tag = parts[0].lower()
+        attributes = {}
+
+        for attPair in parts[1:]:
+            #Parsing pair separated by "="
+            if "=" in attPair:
+                key, value = attPair.split("=", 1)
+                #stripping quotes out from values
+                if len(value) > 2 and value[0] in ["'", "\""]:
+                    value = value[1:-1]
+                attributes[key.lower()] = value
+            #Value is ommited, e.g.: <input disabled>
+            else:
+                attributes[attPair.lower()] = ""
+
+        return tag, attributes
 
     def parse(self):
         text = ""
@@ -97,6 +122,8 @@ class HTMLParser:
     def addTag(self, tag):
         #we won't be handling tags with '!' prefix like !doctype or comments
         if tag.startswith("!"): return
+
+        tag, attributes = self.getTagAndAttributes(tag)
         
         if tag.startswith("/"):
             #closing tag needs to remove and finish last unfinished node
@@ -105,10 +132,14 @@ class HTMLParser:
             node = self.unfinishedTags.pop()
             parent = self.unfinishedTags[-1]
             parent.children.append(node)
+        elif tag in self.SELF_CLOSING_TAGS:
+            parent = self.unfinishedTags[-1]
+            node = Element(tag, attributes, parent)
+            parent.children.append(node)
         else:
             #open tag will add to unfinished tags list
             parent = self.unfinishedTags[-1] if self.unfinishedTags else None
-            node = Element(tag, parent)
+            node = Element(tag, attributes, parent)
             self.unfinishedTags.append(node)
 
     def finish(self):
@@ -133,10 +164,11 @@ class Text:
         return repr(self.text)
 
 class Element:
-    def __init__(self, tag, parent=None):
+    def __init__(self, tag, attributes, parent=None):
         self.tag = tag 
         self.children = []
         self.parent = parent
+        self.attributes = attributes
 
     def __repr__(self) -> str:
         return "<" + self.tag + ">"
@@ -346,7 +378,7 @@ class Browser:
                 text = ""
             elif c == ">":
                 in_tag = False
-                out.append(Element(text))
+                out.append(Element(text, {}))
                 text = ""
             else:
                 text += c
