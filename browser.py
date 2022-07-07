@@ -174,7 +174,7 @@ class Element:
         return "<" + self.tag + ">"
 
 class Layout:
-    def __init__(self, tokens, HSTEP, VSTEP, WIDTH):
+    def __init__(self, tree, HSTEP, VSTEP, WIDTH):
         self.display_list = []
         self.line = []
         self.cursor_x, self.cursor_y = HSTEP, VSTEP
@@ -184,21 +184,44 @@ class Layout:
         self.HSTEP = HSTEP
         self.VSTEP = VSTEP
         self.WIDTH = WIDTH
+        self.inBody = False
 
-        for token in tokens:
-            self.processToken(token)
-        
+        self.processNode(tree)
         #in case tokens didn't reach flush condition, let's force a flush here
         self.flush()
 
-    def processToken(self, token):
-        if isinstance(token, Text):
-            self.processText(token)
+    def processNode(self, tree):
+        if isinstance(tree, Text):
+            self.processText(tree)
         else: #tag
-            self.processTag(token)
+            self.openTag(tree.tag)
+            for child in tree.children:
+                self.processNode(child)
+            self.closeTag(tree.tag)
+    
+    def openTag(self, tag):
+        if tag == "body":
+            self.inBody = True
+        elif tag == "i":
+            self.style = "italic"
+        elif tag == "b":
+            self.weight = "bold"
+        elif tag == "br":
+            self.flush()
+        elif tag == "p":
+            self.flush()
+            self.cursor_y += self.VSTEP
+
+    def closeTag(self, tag):
+        if tag == "body":
+            self.inBody = False 
+        elif tag == "i":
+            self.style = "roman"
+        elif tag == "b":
+            self.weight = "normal" 
 
     def processText(self, token):
-        if not self.in_body: return #let's just layout text within <body>
+        if not self.inBody: return #let's just layout text within <body>
         # font = tkinter.font.Font(size=16, weight=self.weight, slant=self.style)
         font = getFont(size=16, weight=self.weight, slant=self.style)
         whiteSpaceSpace = font.measure(" ")
@@ -235,25 +258,6 @@ class Layout:
         # 1.25 factor for bottom leading
         self.cursor_y = baseline + 1.25 * maxDescent
 
-    def processTag(self, token):
-        if "body" in token.tag:
-            self.in_body = True
-        elif token.tag == "/body":
-            self.in_body = False
-        elif token.tag == "i":
-            self.style = "italic"
-        elif token.tag == "/i":
-            self.style = "roman"
-        elif token.tag == "b":
-            self.weight = "bold"
-        elif token.tag == "/b":
-            self.weight = "normal" 
-        elif token.tag == "br":
-            self.flush()
-        elif token.tag == "p":
-            self.flush()
-            self.cursor_y += self.VSTEP
-    
 class Browser:
     def __init__(self, WIDTH = 800, HEIGHT = 600):
         self.WIDTH = 800
@@ -367,27 +371,6 @@ class Browser:
         data = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(data)
         return data 
 
-    def lex(self, data):
-        out = []
-        text = ""
-        in_tag = False
-        for c in data:
-            if c == "<":
-                in_tag = True
-                if text: out.append(Text(text))
-                text = ""
-            elif c == ">":
-                in_tag = False
-                out.append(Element(text, {}))
-                text = ""
-            else:
-                text += c
-
-        if not in_tag and text:
-            out.append(Text(text))
-
-        return out 
-    
     def getFileContent(self, url: Url):
         file = open(url.path, "r")
         content = file.read()
@@ -406,8 +389,10 @@ class Browser:
     def load(self, url):
         url = Url(url)
         text = self.getUrlContent(url)
-        tokens = self.lex(text)
-        self.display_list = Layout(tokens, self.HSTEP, self.VSTEP, self.WIDTH).display_list
+        # tokens = self.lex(text)
+        self.nodes = HTMLParser(text).parse()
+        printTree(self.nodes)
+        self.display_list = Layout(self.nodes, self.HSTEP, self.VSTEP, self.WIDTH).display_list
         self.draw()
     
     def redraw(self):
@@ -447,10 +432,5 @@ class Browser:
 if __name__ == '__main__':
     browser = Browser()
     url = Url(sys.argv[1])
-
-    content = browser.getUrlContent(url)
-    nodes = HTMLParser(content).parse()
-    printTree(nodes)
-
     browser.load(url.url)
     tkinter.mainloop()
