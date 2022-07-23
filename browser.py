@@ -68,6 +68,7 @@ class HTMLParser:
         "area", "base", "br", "col", "embed", "hr", "img", "input",
         "link", "meta", "param", "source", "track", "wbr",
         ]
+        self.HEAD_TAGS = [ "base", "basefont", "bgsound", "noscript", "link", "meta", "title", "style", "script"]
 
     #Get tag and attributes from a raw tag text 
     def getTagAndAttributes(self, text):
@@ -114,6 +115,7 @@ class HTMLParser:
     def addText(self, text):
         if text.isspace(): return
 
+        self.addImplicitTags(None)
         #text is added as child of last unfinished node
         parent = self.unfinishedTags[-1]
         node = Text(text, parent)
@@ -124,6 +126,7 @@ class HTMLParser:
         if tag.startswith("!"): return
 
         tag, attributes = self.getTagAndAttributes(tag)
+        self.addImplicitTags(tag)
         
         if tag.startswith("/"):
             #closing tag needs to remove and finish last unfinished node
@@ -153,6 +156,24 @@ class HTMLParser:
             parent.children.append(node)
 
         return self.unfinishedTags.pop() #pops the root node
+
+    def addImplicitTags(self, tag):
+        # "implicit_tags has a loop because more than one tag could have been omitted in a row; every iteration around the loop will add just one."
+        while True:
+            openTags = [node.tag for node in self.unfinishedTags]
+
+            if openTags == [] and tag != "html":
+                self.addTag("html")
+            elif openTags == ["html"] and tag not in ["head", "body", "/html"]:
+                if tag in self.HEAD_TAGS:
+                    self.addTag("head")
+                else:
+                    self.addTag("body")
+            elif openTags == ["html", "head"] and tag not in ["/head"] + self.HEAD_TAGS:
+                self.addTag("/head")
+            # /body and /html can also be implicit but self.finished() will close them
+            else:
+                break
 
 class Text:
     def __init__(self, text, parent=None):
